@@ -9,13 +9,28 @@ CREATE TABLE IF NOT EXISTS semaphores (
   timestamp TIMESTAMPTZ NOT NULL,
   latitude DOUBLE PRECISION,
   longitude DOUBLE PRECISION,
+  session_id TEXT DEFAULT 'default',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- If upgrading existing installation, add session_id column
+-- (Safe to run - will only add if column doesn't exist)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'semaphores' AND column_name = 'session_id'
+  ) THEN
+    ALTER TABLE semaphores ADD COLUMN session_id TEXT DEFAULT 'default';
+  END IF;
+END $$;
 
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_semaphores_name ON semaphores(name);
 CREATE INDEX IF NOT EXISTS idx_semaphores_timestamp ON semaphores(timestamp);
 CREATE INDEX IF NOT EXISTS idx_semaphores_name_timestamp ON semaphores(name, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_semaphores_session_id ON semaphores(session_id);
+CREATE INDEX IF NOT EXISTS idx_semaphores_name_session ON semaphores(name, session_id);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE semaphores ENABLE ROW LEVEL SECURITY;

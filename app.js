@@ -45,6 +45,7 @@ function updateUIForAuthStatus() {
     // Enable/disable write buttons
     const writeButtons = [
         elements.newSemaphoreBtn,
+        elements.newSessionBtn,
         elements.recordOpenBtn,
         elements.recordClosedBtn,
         elements.resetHistoryBtn,
@@ -73,11 +74,15 @@ let semaphoreHistory = [];
 let semaphoreList = [];
 let currentLocation = null;
 let semaphoreLocations = {}; // Store locations by semaphore name
+let currentSessionId = null; // Current active collection session
+let sessionList = []; // List of all sessions for current semaphore
 
 // DOM Elements
 const elements = {
     authStatusText: document.getElementById('authStatusText'),
     authBtn: document.getElementById('authBtn'),
+    sessionSelect: document.getElementById('sessionSelect'),
+    newSessionBtn: document.getElementById('newSessionBtn'),
     dashboardViewBtn: document.getElementById('dashboardViewBtn'),
     singleViewBtn: document.getElementById('singleViewBtn'),
     aboutViewBtn: document.getElementById('aboutViewBtn'),
@@ -202,6 +207,73 @@ function getGoogleMapsLink(lat, lon) {
     return `https://www.google.com/maps?q=${lat},${lon}`;
 }
 
+// Session Management Functions
+function generateSessionId() {
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '');
+    return `session_${dateStr}_${timeStr}`;
+}
+
+function formatSessionName(sessionId) {
+    if (sessionId === 'default') return 'Default Collection';
+    if (sessionId === 'all') return 'All Sessions (Average)';
+
+    // Format: session_2025-11-14_103045 -> "Nov 14, 10:30"
+    const parts = sessionId.split('_');
+    if (parts.length >= 3) {
+        const datePart = parts[1]; // 2025-11-14
+        const timePart = parts[2]; // 103045
+        const date = new Date(datePart);
+        const hours = timePart.substring(0, 2);
+        const minutes = timePart.substring(2, 4);
+
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${monthNames[date.getMonth()]} ${date.getDate()}, ${hours}:${minutes}`;
+    }
+    return sessionId;
+}
+
+async function loadSessionsForSemaphore(semaphoreName) {
+    try {
+        const { data, error } = await supabase
+            .from('semaphores')
+            .select('session_id')
+            .eq('name', semaphoreName)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error loading sessions:', error);
+            return [];
+        }
+
+        // Get unique session IDs
+        const sessions = [...new Set(data.map(record => record.session_id || 'default'))];
+        return sessions;
+    } catch (error) {
+        console.error('Error loading sessions:', error);
+        return [];
+    }
+}
+
+function updateSessionDropdown() {
+    elements.sessionSelect.innerHTML = '<option value="all">All Sessions (Average)</option>';
+
+    sessionList.forEach(sessionId => {
+        const option = document.createElement('option');
+        option.value = sessionId;
+        option.textContent = formatSessionName(sessionId);
+        elements.sessionSelect.appendChild(option);
+    });
+
+    // Select current session or "all"
+    if (currentSessionId && sessionList.includes(currentSessionId)) {
+        elements.sessionSelect.value = currentSessionId;
+    } else {
+        elements.sessionSelect.value = 'all';
+    }
+}
+
 // Database Functions
 async function loadSemaphoreList() {
     try {
@@ -262,11 +334,28 @@ async function loadSemaphoreList() {
 async function loadSemaphoreHistory(semaphoreName) {
     try {
         showLoading();
-        const { data, error } = await supabase
+
+        // Load all sessions for this semaphore
+        sessionList = await loadSessionsForSemaphore(semaphoreName);
+        updateSessionDropdown();
+
+        // Get selected session filter
+        const selectedSession = elements.sessionSelect ? elements.sessionSelect.value : 'all';
+
+        // Build query
+        let query = supabase
             .from('semaphores')
             .select('*')
-            .eq('name', semaphoreName)
-            .order('timestamp', { ascending: false });
+            .eq('name', semaphoreName);
+
+        // Filter by session if specific session selected
+        if (selectedSession !== 'all') {
+            query = query.eq('session_id', selectedSession);
+        }
+
+        query = query.order('timestamp', { ascending: false });
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -307,7 +396,8 @@ async function recordState(semaphoreName, state) {
         const record = {
             name: semaphoreName,
             current_state: state,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            session_id: currentSessionId || 'default'
         };
 
         // Add location if available
@@ -672,8 +762,8 @@ function switchToAboutView() {
 }
 
 // Prediction Logic
-function calculateStats() {
-    if (semaphoreHistory.length < 2) {
+function calculateStatsForHistory(history) {
+    if (history.length < 2) {
         return {
             avgOpenDuration: null,
             avgClosedDuration: null,
@@ -685,7 +775,7 @@ function calculateStats() {
     let closedDurations = [];
 
     // Sort by timestamp ascending for calculation
-    const sortedHistory = [...semaphoreHistory].reverse();
+    const sortedHistory = [...history].reverse();
 
     for (let i = 0; i < sortedHistory.length - 1; i++) {
         const current = sortedHistory[i];
@@ -713,6 +803,65 @@ function calculateStats() {
         avgOpenDuration: avgOpen,
         avgClosedDuration: avgClosed,
         totalCycles
+    };
+}
+
+function calculateStats() {
+    const selectedSession = elements.sessionSelect ? elements.sessionSelect.value : 'all';
+
+    // If viewing a specific session, calculate stats for that session only
+    if (selectedSession !== 'all') {
+        return calculateStatsForHistory(semaphoreHistory);
+    }
+
+    // If viewing "all sessions", calculate average across all sessions
+    // Group history by session
+    const sessionGroups = {};
+    semaphoreHistory.forEach(record => {
+        const sessionId = record.session_id || 'default';
+        if (!sessionGroups[sessionId]) {
+            sessionGroups[sessionId] = [];
+        }
+        sessionGroups[sessionId].push(record);
+    });
+
+    // Calculate stats for each session
+    const sessionStats = [];
+    Object.keys(sessionGroups).forEach(sessionId => {
+        const stats = calculateStatsForHistory(sessionGroups[sessionId]);
+        if (stats.avgOpenDuration !== null || stats.avgClosedDuration !== null) {
+            sessionStats.push(stats);
+        }
+    });
+
+    // If no valid session stats, return empty
+    if (sessionStats.length === 0) {
+        return {
+            avgOpenDuration: null,
+            avgClosedDuration: null,
+            totalCycles: 0
+        };
+    }
+
+    // Average the averages across sessions
+    const validOpenStats = sessionStats.filter(s => s.avgOpenDuration !== null);
+    const validClosedStats = sessionStats.filter(s => s.avgClosedDuration !== null);
+
+    const avgOpen = validOpenStats.length > 0
+        ? validOpenStats.reduce((sum, s) => sum + s.avgOpenDuration, 0) / validOpenStats.length
+        : null;
+
+    const avgClosed = validClosedStats.length > 0
+        ? validClosedStats.reduce((sum, s) => sum + s.avgClosedDuration, 0) / validClosedStats.length
+        : null;
+
+    const totalCycles = sessionStats.reduce((sum, s) => sum + s.totalCycles, 0);
+
+    return {
+        avgOpenDuration: avgOpen,
+        avgClosedDuration: avgClosed,
+        totalCycles,
+        sessionsCount: sessionStats.length
     };
 }
 
@@ -946,6 +1095,31 @@ elements.semaphoreSelect.addEventListener('change', async (e) => {
     currentSemaphore = selectedName;
     await loadSemaphoreHistory(selectedName);
     updateUI();
+});
+
+// Session Controls
+elements.sessionSelect.addEventListener('change', async (e) => {
+    if (!currentSemaphore) return;
+    await loadSemaphoreHistory(currentSemaphore);
+    updateUI();
+});
+
+elements.newSessionBtn.addEventListener('click', () => {
+    if (!isAdmin()) {
+        showToast('❌ Login required to create sessions', 'error');
+        return;
+    }
+
+    const confirmed = confirm(
+        'Start a new collection session?\n\n' +
+        'This will create a separate timing collection that you can compare with others.\n\n' +
+        'Tip: Collect the same semaphore at different times of day to average out timing errors!'
+    );
+
+    if (confirmed) {
+        currentSessionId = generateSessionId();
+        showToast(`✅ New session started: ${formatSessionName(currentSessionId)}`, 'success');
+    }
 });
 
 elements.recordOpenBtn.addEventListener('click', async () => {
