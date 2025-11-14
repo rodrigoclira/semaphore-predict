@@ -2,6 +2,9 @@
 const SUPABASE_URL = 'https://ymwxkasxjebrtlnjipaj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inltd3hrYXN4amVicnRsbmppcGFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNDYwMjMsImV4cCI6MjA3ODcyMjAyM30.eThLkMY8RGIxPsHtYVbpLHom1y2IvIqx6zQe1XzIEuI';
 
+// Admin Authentication
+const ADMIN_PASSCODE = 'semaphore2025';
+
 // Check if Supabase library loaded
 if (!window.supabase) {
     alert('ERROR: Failed to load Supabase library. Please check your internet connection and reload the page.');
@@ -10,6 +13,59 @@ if (!window.supabase) {
 
 // Initialize Supabase client
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Authentication Helper Functions
+function isAdmin() {
+    return localStorage.getItem('isAdmin') === 'true';
+}
+
+function setAdminStatus(status) {
+    if (status) {
+        localStorage.setItem('isAdmin', 'true');
+    } else {
+        localStorage.removeItem('isAdmin');
+    }
+    updateUIForAuthStatus();
+}
+
+function updateUIForAuthStatus() {
+    const admin = isAdmin();
+
+    // Update status text and button
+    if (admin) {
+        elements.authStatusText.textContent = '✅ Admin Mode';
+        elements.authBtn.textContent = '🚪 Logout';
+        elements.authBtn.classList.add('logout');
+    } else {
+        elements.authStatusText.textContent = '🔒 View Only Mode';
+        elements.authBtn.textContent = '🔑 Enter Passcode';
+        elements.authBtn.classList.remove('logout');
+    }
+
+    // Enable/disable write buttons
+    const writeButtons = [
+        elements.newSemaphoreBtn,
+        elements.recordOpenBtn,
+        elements.recordClosedBtn,
+        elements.resetHistoryBtn,
+        elements.renameSemaphoreBtn
+    ];
+
+    writeButtons.forEach(btn => {
+        if (btn) {
+            btn.disabled = !admin;
+            if (!admin) {
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+                btn.title = 'Login required to modify data';
+            } else {
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+                btn.title = '';
+            }
+        }
+    });
+}
 
 // Application State
 let currentSemaphore = null;
@@ -20,6 +76,8 @@ let semaphoreLocations = {}; // Store locations by semaphore name
 
 // DOM Elements
 const elements = {
+    authStatusText: document.getElementById('authStatusText'),
+    authBtn: document.getElementById('authBtn'),
     dashboardViewBtn: document.getElementById('dashboardViewBtn'),
     singleViewBtn: document.getElementById('singleViewBtn'),
     aboutViewBtn: document.getElementById('aboutViewBtn'),
@@ -228,6 +286,11 @@ async function loadSemaphoreHistory(semaphoreName) {
 }
 
 async function recordState(semaphoreName, state) {
+    if (!isAdmin()) {
+        showToast('❌ Login required to record states', 'error');
+        return;
+    }
+
     try {
         showLoading();
 
@@ -278,6 +341,11 @@ async function recordState(semaphoreName, state) {
 }
 
 async function deleteHistory(semaphoreName) {
+    if (!isAdmin()) {
+        showToast('❌ Login required to reset history', 'error');
+        return false;
+    }
+
     try {
         showLoading();
         const { error } = await supabase
@@ -304,6 +372,11 @@ async function deleteHistory(semaphoreName) {
 }
 
 async function renameSemaphore(oldName, newName) {
+    if (!isAdmin()) {
+        showToast('❌ Login required to rename semaphores', 'error');
+        return false;
+    }
+
     try {
         showLoading();
 
@@ -805,6 +878,26 @@ elements.aboutViewBtn.addEventListener('click', () => {
     switchToAboutView();
 });
 
+// Authentication
+elements.authBtn.addEventListener('click', () => {
+    if (isAdmin()) {
+        // Logout
+        if (confirm('Logout from admin mode?')) {
+            setAdminStatus(false);
+            showToast('Logged out - now in View Only mode', 'info');
+        }
+    } else {
+        // Login
+        const passcode = prompt('Enter admin passcode:');
+        if (passcode === ADMIN_PASSCODE) {
+            setAdminStatus(true);
+            showToast('✅ Admin access granted!', 'success');
+        } else if (passcode) {
+            showToast('❌ Incorrect passcode', 'error');
+        }
+    }
+});
+
 elements.newSemaphoreBtn.addEventListener('click', () => {
     elements.newSemaphoreForm.classList.remove('hidden');
     elements.semaphoreName.focus();
@@ -933,6 +1026,9 @@ setInterval(() => {
 
 // Initialize app
 async function init() {
+    // Set initial UI based on auth status
+    updateUIForAuthStatus();
+
     showLoading();
     try {
         await loadSemaphoreList();
