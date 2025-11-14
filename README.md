@@ -4,12 +4,16 @@ A mobile-first web app to track traffic light (semaphore) states and predict the
 
 ## Features
 
+✅ **Progressive Web App** - Install on your iPhone/Android like a native app
+✅ **Offline Support** - Works without internet after first visit
 ✅ **Multiple Semaphores** - Track different traffic lights separately
 ✅ **State Prediction** - Predicts current state based on historical patterns
+✅ **Dashboard View** - See all semaphores at once for route planning
 ✅ **Geolocation** - Automatically captures semaphore locations (optional)
 ✅ **History Tracking** - View complete state change history
 ✅ **Mobile Optimized** - Designed for smartphone use
 ✅ **Cloud Sync** - Data accessible anywhere via Supabase
+✅ **Reset History** - Update timing patterns when they change
 
 ## How It Works
 
@@ -51,12 +55,36 @@ git push -u origin claude/semaphore-state-tracker-01TLF9mKwkhpUfrWeWjHMwLc
 gh repo edit --enable-pages --pages-branch=claude/semaphore-state-tracker-01TLF9mKwkhpUfrWeWjHMwLc --pages-path=/
 ```
 
-### 3. Mobile Access
+### 3. Install as PWA (Progressive Web App)
 
-Once deployed, you can:
-- Add the webpage to your smartphone home screen for app-like experience
-- **iOS**: Safari → Share → "Add to Home Screen"
-- **Android**: Chrome → Menu → "Add to Home Screen"
+The app can be installed on your smartphone like a native app!
+
+**📱 iPhone Installation:**
+1. Open Safari and visit: `https://rodrigoclira.github.io/semaphore-predict/`
+2. Tap the **Share** button
+3. Select **"Add to Home Screen"**
+4. Tap **"Add"**
+
+**📱 Android Installation:**
+1. Open Chrome and visit the app
+2. Tap **Menu** (⋮)
+3. Select **"Add to Home Screen"** or **"Install App"**
+
+**Benefits:**
+- ✅ Launches in full-screen (no browser UI)
+- ✅ App icon on home screen
+- ✅ Works offline
+- ✅ Faster loading with caching
+- ✅ Auto-updates when new version available
+
+See [PWA-SETUP.md](PWA-SETUP.md) for detailed installation guide and troubleshooting.
+
+### 4. Generate App Icons (Optional but Recommended)
+
+For the best PWA experience, generate app icons:
+1. See `icons/README.md` for instructions
+2. Convert the included `icons/icon-template.svg`
+3. Or use https://www.pwabuilder.com/imageGenerator
 
 ## Usage on Smartphone
 
@@ -73,17 +101,23 @@ Once deployed, you can:
 
 ## Files
 
-- `index.html` - Main HTML structure
+- `index.html` - Main HTML structure with PWA meta tags
 - `style.css` - Mobile-first responsive styles
 - `app.js` - Core logic and Supabase integration
+- `service-worker.js` - PWA offline support and caching
+- `manifest.json` - Web app manifest for installation
 - `database-setup.sql` - Database schema and setup
+- `icons/` - App icons for different platforms
+- `PWA-SETUP.md` - Detailed PWA installation guide
 
 ## Technical Details
 
-**Frontend**: Vanilla JavaScript, HTML, CSS
+**Frontend**: Vanilla JavaScript, HTML5, CSS3
 **Database**: Supabase (PostgreSQL)
 **Hosting**: GitHub Pages
+**PWA**: Service Worker, Web App Manifest, Offline Support
 **Location**: Browser Geolocation API
+**Caching**: Service Worker with cache-first strategy
 
 ## Database Schema
 
