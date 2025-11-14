@@ -20,6 +20,11 @@ let semaphoreLocations = {}; // Store locations by semaphore name
 
 // DOM Elements
 const elements = {
+    dashboardViewBtn: document.getElementById('dashboardViewBtn'),
+    singleViewBtn: document.getElementById('singleViewBtn'),
+    dashboardView: document.getElementById('dashboardView'),
+    singleView: document.getElementById('singleView'),
+    dashboardGrid: document.getElementById('dashboardGrid'),
     semaphoreSelect: document.getElementById('semaphoreSelect'),
     newSemaphoreBtn: document.getElementById('newSemaphoreBtn'),
     newSemaphoreForm: document.getElementById('newSemaphoreForm'),
@@ -291,6 +296,228 @@ async function deleteHistory(semaphoreName) {
     }
 }
 
+// Dashboard Functions
+async function loadAllSemaphoresData() {
+    try {
+        showLoading();
+        const allData = [];
+
+        for (const semaphoreName of semaphoreList) {
+            const { data, error } = await supabase
+                .from('semaphores')
+                .select('*')
+                .eq('name', semaphoreName)
+                .order('timestamp', { ascending: false })
+                .limit(50); // Get recent records for calculation
+
+            if (!error && data) {
+                const history = data.map(item => ({
+                    ...item,
+                    timestamp: new Date(item.timestamp)
+                }));
+
+                const prediction = predictStateForHistory(history);
+                const stats = calculateStatsForHistory(history);
+
+                allData.push({
+                    name: semaphoreName,
+                    history,
+                    prediction,
+                    stats,
+                    location: semaphoreLocations[semaphoreName]
+                });
+            }
+        }
+
+        return allData;
+    } catch (error) {
+        console.error('Error loading all semaphores:', error);
+        return [];
+    } finally {
+        hideLoading();
+    }
+}
+
+function calculateStatsForHistory(history) {
+    if (history.length < 2) {
+        return {
+            avgOpenDuration: null,
+            avgClosedDuration: null,
+            totalCycles: 0
+        };
+    }
+
+    let openDurations = [];
+    let closedDurations = [];
+    const sortedHistory = [...history].reverse();
+
+    for (let i = 0; i < sortedHistory.length - 1; i++) {
+        const current = sortedHistory[i];
+        const next = sortedHistory[i + 1];
+        const duration = next.timestamp - current.timestamp;
+
+        if (current.current_state === 'open') {
+            openDurations.push(duration);
+        } else if (current.current_state === 'closed') {
+            closedDurations.push(duration);
+        }
+    }
+
+    const avgOpen = openDurations.length > 0
+        ? openDurations.reduce((a, b) => a + b, 0) / openDurations.length
+        : null;
+
+    const avgClosed = closedDurations.length > 0
+        ? closedDurations.reduce((a, b) => a + b, 0) / closedDurations.length
+        : null;
+
+    return {
+        avgOpenDuration: avgOpen,
+        avgClosedDuration: avgClosed,
+        totalCycles: Math.min(openDurations.length, closedDurations.length)
+    };
+}
+
+function predictStateForHistory(history) {
+    if (history.length === 0) {
+        return { state: 'unknown', timeUntilChange: null, confidence: 'No data' };
+    }
+
+    const lastRecord = history[0];
+    const stats = calculateStatsForHistory(history);
+    const now = new Date();
+    const timeSinceLastRecord = now - lastRecord.timestamp;
+
+    if (history.length < 2 || !stats.avgOpenDuration || !stats.avgClosedDuration) {
+        return {
+            state: lastRecord.current_state,
+            timeUntilChange: null,
+            confidence: 'Insufficient data',
+            timeSince: timeSinceLastRecord
+        };
+    }
+
+    const lastState = lastRecord.current_state;
+    let currentState = lastState;
+    let timeRemaining = timeSinceLastRecord;
+
+    while (timeRemaining > 0) {
+        const duration = currentState === 'open'
+            ? stats.avgOpenDuration
+            : stats.avgClosedDuration;
+
+        if (!duration || timeRemaining < duration) {
+            break;
+        }
+
+        timeRemaining -= duration;
+        currentState = currentState === 'open' ? 'closed' : 'open';
+    }
+
+    const currentDuration = currentState === 'open'
+        ? stats.avgOpenDuration
+        : stats.avgClosedDuration;
+
+    const timeUntilChange = currentDuration ? currentDuration - timeRemaining : null;
+
+    return {
+        state: currentState,
+        timeUntilChange,
+        confidence: `${stats.totalCycles} cycles`,
+        timeSince: timeSinceLastRecord
+    };
+}
+
+async function updateDashboard() {
+    const allData = await loadAllSemaphoresData();
+
+    if (allData.length === 0) {
+        elements.dashboardGrid.innerHTML = '<p class="no-data">No semaphores yet. Create one to get started!</p>';
+        return;
+    }
+
+    // Sort by: open first, then by time until change
+    allData.sort((a, b) => {
+        if (a.prediction.state === 'open' && b.prediction.state !== 'open') return -1;
+        if (a.prediction.state !== 'open' && b.prediction.state === 'open') return 1;
+        if (a.prediction.timeUntilChange && b.prediction.timeUntilChange) {
+            return a.prediction.timeUntilChange - b.prediction.timeUntilChange;
+        }
+        return 0;
+    });
+
+    elements.dashboardGrid.innerHTML = '';
+
+    allData.forEach(semaphoreData => {
+        const card = createDashboardCard(semaphoreData);
+        elements.dashboardGrid.appendChild(card);
+    });
+}
+
+function createDashboardCard(semaphoreData) {
+    const { name, prediction, stats, location } = semaphoreData;
+
+    const card = document.createElement('div');
+    card.className = 'semaphore-card';
+    card.addEventListener('click', () => {
+        // Switch to single view and select this semaphore
+        switchToSingleView();
+        elements.semaphoreSelect.value = name;
+        elements.semaphoreSelect.dispatchEvent(new Event('change'));
+    });
+
+    const stateIcon = prediction.state === 'open' ? '🟢' : prediction.state === 'closed' ? '🔴' : '⚪';
+    const locationIcon = location && location.latitude && location.longitude ? '📍' : '';
+
+    const timeUntilChangeText = prediction.timeUntilChange
+        ? formatDuration(prediction.timeUntilChange)
+        : '--';
+
+    const isSoon = prediction.timeUntilChange && prediction.timeUntilChange < 60000; // Less than 1 minute
+
+    card.innerHTML = `
+        <div class="semaphore-card-header">
+            <div class="semaphore-card-name">${name}</div>
+            ${locationIcon ? `<div class="semaphore-card-location">${locationIcon}</div>` : ''}
+        </div>
+
+        <div class="semaphore-card-state ${prediction.state}">
+            <div class="semaphore-card-icon">${stateIcon}</div>
+            <div class="semaphore-card-state-info">
+                <div class="semaphore-card-state-label">Current State</div>
+                <div class="semaphore-card-state-value ${prediction.state}">${prediction.state.toUpperCase()}</div>
+            </div>
+        </div>
+
+        <div class="semaphore-card-timer">
+            <div class="semaphore-card-timer-label">Changes in</div>
+            <div class="semaphore-card-timer-value ${isSoon ? 'soon' : ''}">${timeUntilChangeText}</div>
+        </div>
+
+        <div class="semaphore-card-info">
+            <span>${stats.totalCycles} cycles tracked</span>
+            <span>${prediction.confidence}</span>
+        </div>
+    `;
+
+    return card;
+}
+
+function switchToDashboardView() {
+    elements.dashboardView.classList.remove('hidden');
+    elements.singleView.classList.add('hidden');
+    elements.dashboardViewBtn.classList.add('active');
+    elements.singleViewBtn.classList.remove('active');
+    updateDashboard();
+}
+
+function switchToSingleView() {
+    elements.dashboardView.classList.add('hidden');
+    elements.singleView.classList.remove('hidden');
+    elements.dashboardViewBtn.classList.remove('active');
+    elements.singleViewBtn.classList.add('active');
+}
+
 // Prediction Logic
 function calculateStats() {
     if (semaphoreHistory.length < 2) {
@@ -485,6 +712,15 @@ function updateHistoryList() {
 }
 
 // Event Handlers
+// View toggle
+elements.dashboardViewBtn.addEventListener('click', () => {
+    switchToDashboardView();
+});
+
+elements.singleViewBtn.addEventListener('click', () => {
+    switchToSingleView();
+});
+
 elements.newSemaphoreBtn.addEventListener('click', () => {
     elements.newSemaphoreForm.classList.remove('hidden');
     elements.semaphoreName.focus();
@@ -568,7 +804,11 @@ elements.resetHistoryBtn.addEventListener('click', async () => {
 
 // Auto-refresh prediction every 10 seconds
 setInterval(() => {
-    if (currentSemaphore && semaphoreHistory.length > 0) {
+    if (!elements.dashboardView.classList.contains('hidden')) {
+        // Dashboard view is active
+        updateDashboard();
+    } else if (currentSemaphore && semaphoreHistory.length > 0) {
+        // Single view is active
         updateUI();
     }
 }, 10000);

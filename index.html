@@ -13,23 +13,41 @@
             <p class="subtitle">Track and predict traffic light states</p>
         </header>
 
-        <!-- Semaphore Selection/Creation -->
-        <section class="semaphore-selector">
-            <div class="input-group">
-                <select id="semaphoreSelect">
-                    <option value="">-- Select a semaphore --</option>
-                </select>
-                <button id="newSemaphoreBtn" class="btn-secondary">+ New</button>
-            </div>
+        <!-- View Toggle -->
+        <section class="view-toggle">
+            <button id="dashboardViewBtn" class="btn-toggle">📊 Dashboard</button>
+            <button id="singleViewBtn" class="btn-toggle active">🚦 Single View</button>
+        </section>
 
-            <div id="newSemaphoreForm" class="hidden">
-                <input type="text" id="semaphoreName" placeholder="Enter semaphore name (e.g., Main St & 5th Ave)">
-                <div class="button-group">
-                    <button id="createSemaphoreBtn" class="btn-primary">Create</button>
-                    <button id="cancelBtn" class="btn-secondary">Cancel</button>
-                </div>
+        <!-- Dashboard View -->
+        <section id="dashboardView" class="hidden">
+            <div class="dashboard-header">
+                <h2>All Semaphores</h2>
+                <p class="dashboard-subtitle">Real-time predictions for route planning</p>
+            </div>
+            <div id="dashboardGrid" class="dashboard-grid">
+                <p class="no-data">No semaphores yet. Create one to get started!</p>
             </div>
         </section>
+
+        <!-- Semaphore Selection/Creation -->
+        <section id="singleView">
+            <div class="semaphore-selector">
+                <div class="input-group">
+                    <select id="semaphoreSelect">
+                        <option value="">-- Select a semaphore --</option>
+                    </select>
+                    <button id="newSemaphoreBtn" class="btn-secondary">+ New</button>
+                </div>
+
+                <div id="newSemaphoreForm" class="hidden">
+                    <input type="text" id="semaphoreName" placeholder="Enter semaphore name (e.g., Main St & 5th Ave)">
+                    <div class="button-group">
+                        <button id="createSemaphoreBtn" class="btn-primary">Create</button>
+                        <button id="cancelBtn" class="btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
 
         <!-- Current State Display -->
         <section id="currentStateSection" class="hidden">
@@ -79,18 +97,19 @@
             </div>
         </section>
 
-        <!-- History Section -->
-        <section id="historySection" class="hidden">
-            <div class="history-header">
-                <h3>History</h3>
-                <div class="history-actions">
-                    <button id="toggleHistoryBtn" class="btn-link">Show All</button>
-                    <button id="resetHistoryBtn" class="btn-link btn-danger">Reset History</button>
+            <!-- History Section -->
+            <section id="historySection" class="hidden">
+                <div class="history-header">
+                    <h3>History</h3>
+                    <div class="history-actions">
+                        <button id="toggleHistoryBtn" class="btn-link">Show All</button>
+                        <button id="resetHistoryBtn" class="btn-link btn-danger">Reset History</button>
+                    </div>
                 </div>
-            </div>
-            <div id="historyList" class="history-list collapsed">
-                <p class="no-data">No records yet. Start by recording the current state!</p>
-            </div>
+                <div id="historyList" class="history-list collapsed">
+                    <p class="no-data">No records yet. Start by recording the current state!</p>
+                </div>
+            </section>
         </section>
 
         <!-- Footer -->

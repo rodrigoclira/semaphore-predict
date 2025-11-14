@@ -51,6 +51,198 @@ header h1 {
     opacity: 0.9;
 }
 
+/* View Toggle */
+.view-toggle {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    background: var(--card-bg);
+    padding: 0.5rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+}
+
+.btn-toggle {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-toggle:hover {
+    background: var(--bg-color);
+}
+
+.btn-toggle.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* Dashboard View */
+#dashboardView {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-lg);
+    margin-bottom: 1rem;
+}
+
+.dashboard-header {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.dashboard-header h2 {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.semaphore-card {
+    background: var(--bg-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.semaphore-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.semaphore-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 1rem;
+}
+
+.semaphore-card-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.semaphore-card-location {
+    font-size: 1rem;
+    margin-left: 0.5rem;
+    opacity: 0.6;
+}
+
+.semaphore-card-state {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+
+.semaphore-card-state.open {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
+    border-left: 4px solid var(--success-color);
+}
+
+.semaphore-card-state.closed {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
+    border-left: 4px solid var(--danger-color);
+}
+
+.semaphore-card-state.unknown {
+    background: rgba(100, 116, 139, 0.1);
+    border-left: 4px solid var(--secondary-color);
+}
+
+.semaphore-card-icon {
+    font-size: 1.5rem;
+}
+
+.semaphore-card-state-info {
+    flex: 1;
+}
+
+.semaphore-card-state-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.semaphore-card-state-value {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.semaphore-card-state-value.open {
+    color: var(--success-color);
+}
+
+.semaphore-card-state-value.closed {
+    color: var(--danger-color);
+}
+
+.semaphore-card-state-value.unknown {
+    color: var(--secondary-color);
+}
+
+.semaphore-card-timer {
+    background: white;
+    padding: 0.75rem;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.semaphore-card-timer-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+}
+
+.semaphore-card-timer-value {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.semaphore-card-timer-value.soon {
+    color: var(--warning-color);
+}
+
+.semaphore-card-info {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+}
+
 /* Cards */
 .semaphore-selector,
 .state-card {
