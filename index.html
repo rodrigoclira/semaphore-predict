@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semaphore State Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚦 Semaphore Tracker</h1>
+            <p class="subtitle">Track and predict traffic light states</p>
+        </header>
+
+        <!-- Semaphore Selection/Creation -->
+        <section class="semaphore-selector">
+            <div class="input-group">
+                <select id="semaphoreSelect">
+                    <option value="">-- Select a semaphore --</option>
+                </select>
+                <button id="newSemaphoreBtn" class="btn-secondary">+ New</button>
+            </div>
+
+            <div id="newSemaphoreForm" class="hidden">
+                <input type="text" id="semaphoreName" placeholder="Enter semaphore name (e.g., Main St & 5th Ave)">
+                <div class="button-group">
+                    <button id="createSemaphoreBtn" class="btn-primary">Create</button>
+                    <button id="cancelBtn" class="btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Current State Display -->
+        <section id="currentStateSection" class="hidden">
+            <div class="state-card">
+                <h2 id="semaphoreTitle">Loading...</h2>
+
+                <div class="prediction-display">
+                    <div class="current-state" id="currentState">
+                        <span class="state-label">Predicted State:</span>
+                        <span class="state-value" id="predictedState">--</span>
+                    </div>
+                    <div class="confidence" id="confidence">
+                        <span class="confidence-label">Based on:</span>
+                        <span class="confidence-value" id="confidenceValue">No data yet</span>
+                    </div>
+                    <div class="last-update">
+                        <span class="label">Last recorded:</span>
+                        <span id="lastUpdate">Never</span>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="recordOpenBtn" class="btn-state btn-open">
+                        <span class="icon">🟢</span>
+                        <span>Now is OPEN</span>
+                    </button>
+                    <button id="recordClosedBtn" class="btn-state btn-closed">
+                        <span class="icon">🔴</span>
+                        <span>Now is CLOSED</span>
+                    </button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Avg. Open Duration</div>
+                        <div class="stat-value" id="avgOpenDuration">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Avg. Closed Duration</div>
+                        <div class="stat-value" id="avgClosedDuration">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Cycles</div>
+                        <div class="stat-value" id="totalCycles">0</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- History Section -->
+        <section id="historySection" class="hidden">
+            <div class="history-header">
+                <h3>History</h3>
+                <button id="toggleHistoryBtn" class="btn-link">Show All</button>
+            </div>
+            <div id="historyList" class="history-list collapsed">
+                <p class="no-data">No records yet. Start by recording the current state!</p>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <p>Data synced with Supabase • Accessible anywhere</p>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
