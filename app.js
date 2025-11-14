@@ -2,6 +2,12 @@
 const SUPABASE_URL = 'https://ymwxkasxjebrtlnjipaj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inltd3hrYXN4amVicnRsbmppcGFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNDYwMjMsImV4cCI6MjA3ODcyMjAyM30.eThLkMY8RGIxPsHtYVbpLHom1y2IvIqx6zQe1XzIEuI';
 
+// Check if Supabase library loaded
+if (!window.supabase) {
+    alert('ERROR: Failed to load Supabase library. Please check your internet connection and reload the page.');
+    throw new Error('Supabase library not loaded');
+}
+
 // Initialize Supabase client
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -133,7 +139,18 @@ async function loadSemaphoreList() {
             .select('name, latitude, longitude')
             .order('name');
 
-        if (error) throw error;
+        if (error) {
+            console.error('Database error:', error);
+            showToast(`Database Error: ${error.message}. Have you run database-setup.sql?`, 'error');
+            throw error;
+        }
+
+        // Check if data is valid
+        if (!data) {
+            console.error('No data returned from database');
+            showToast('No data returned. Check database connection.', 'error');
+            return [];
+        }
 
         // Get unique semaphore names and their locations
         const semaphoreMap = {};
@@ -166,7 +183,7 @@ async function loadSemaphoreList() {
         return semaphoreList;
     } catch (error) {
         console.error('Error loading semaphore list:', error);
-        showToast('Error loading semaphores', 'error');
+        // Error already shown in toast above
         return [];
     }
 }
@@ -228,7 +245,11 @@ async function recordState(semaphoreName, state) {
             .insert([record])
             .select();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Database insert error:', error);
+            showToast(`Error: ${error.message}. Check database setup!`, 'error');
+            throw error;
+        }
 
         showToast(`Recorded as ${state.toUpperCase()}`, 'success');
         await loadSemaphoreHistory(semaphoreName);
@@ -236,7 +257,7 @@ async function recordState(semaphoreName, state) {
         return data;
     } catch (error) {
         console.error('Error recording state:', error);
-        showToast('Error recording state', 'error');
+        // Error already shown in toast above
         return null;
     } finally {
         hideLoading();
