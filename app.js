@@ -47,6 +47,11 @@ const elements = {
     historyList: document.getElementById('historyList'),
     toggleHistoryBtn: document.getElementById('toggleHistoryBtn'),
     resetHistoryBtn: document.getElementById('resetHistoryBtn'),
+    renameSemaphoreBtn: document.getElementById('renameSemaphoreBtn'),
+    renameForm: document.getElementById('renameForm'),
+    newSemaphoreName: document.getElementById('newSemaphoreName'),
+    confirmRenameBtn: document.getElementById('confirmRenameBtn'),
+    cancelRenameBtn: document.getElementById('cancelRenameBtn'),
     loadingOverlay: document.getElementById('loadingOverlay'),
     toast: document.getElementById('toast')
 };
@@ -292,6 +297,66 @@ async function deleteHistory(semaphoreName) {
         return true;
     } catch (error) {
         console.error('Error deleting history:', error);
+        return false;
+    } finally {
+        hideLoading();
+    }
+}
+
+async function renameSemaphore(oldName, newName) {
+    try {
+        showLoading();
+
+        // Check if new name already exists
+        const { data: existing, error: checkError } = await supabase
+            .from('semaphores')
+            .select('name')
+            .eq('name', newName)
+            .limit(1);
+
+        if (checkError) {
+            console.error('Database check error:', checkError);
+            showToast(`Error checking name: ${checkError.message}`, 'error');
+            throw checkError;
+        }
+
+        if (existing && existing.length > 0) {
+            showToast('A semaphore with this name already exists', 'error');
+            return false;
+        }
+
+        // Update all records with the old name to the new name
+        const { error } = await supabase
+            .from('semaphores')
+            .update({ name: newName })
+            .eq('name', oldName);
+
+        if (error) {
+            console.error('Database rename error:', error);
+            showToast(`Error renaming: ${error.message}`, 'error');
+            throw error;
+        }
+
+        showToast(`Renamed to "${newName}"`, 'success');
+
+        // Update local state
+        if (semaphoreLocations[oldName]) {
+            semaphoreLocations[newName] = semaphoreLocations[oldName];
+            delete semaphoreLocations[oldName];
+        }
+
+        // Reload semaphore list
+        await loadSemaphoreList();
+
+        // Update current semaphore and reload
+        currentSemaphore = newName;
+        elements.semaphoreSelect.value = newName;
+        await loadSemaphoreHistory(newName);
+        updateUI();
+
+        return true;
+    } catch (error) {
+        console.error('Error renaming semaphore:', error);
         return false;
     } finally {
         hideLoading();
@@ -818,6 +883,40 @@ elements.resetHistoryBtn.addEventListener('click', async () => {
 
     if (confirmed) {
         await deleteHistory(currentSemaphore);
+    }
+});
+
+elements.renameSemaphoreBtn.addEventListener('click', () => {
+    if (!currentSemaphore) return;
+    elements.renameForm.classList.remove('hidden');
+    elements.newSemaphoreName.value = currentSemaphore;
+    elements.newSemaphoreName.focus();
+    elements.newSemaphoreName.select();
+});
+
+elements.cancelRenameBtn.addEventListener('click', () => {
+    elements.renameForm.classList.add('hidden');
+    elements.newSemaphoreName.value = '';
+});
+
+elements.confirmRenameBtn.addEventListener('click', async () => {
+    if (!currentSemaphore) return;
+
+    const newName = elements.newSemaphoreName.value.trim();
+    if (!newName) {
+        showToast('Please enter a name', 'error');
+        return;
+    }
+
+    if (newName === currentSemaphore) {
+        showToast('Name is the same', 'error');
+        return;
+    }
+
+    const success = await renameSemaphore(currentSemaphore, newName);
+    if (success) {
+        elements.renameForm.classList.add('hidden');
+        elements.newSemaphoreName.value = '';
     }
 });
 

@@ -617,6 +617,19 @@ button {
     background: rgba(239, 68, 68, 0.1);
 }
 
+/* Rename Form */
+.rename-form {
+    background: var(--bg-color);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.rename-form input {
+    width: 100%;
+    margin-bottom: 0.75rem;
+}
+
 .history-list {
     max-height: 400px;
     overflow-y: auto;
