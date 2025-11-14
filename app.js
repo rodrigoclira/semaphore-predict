@@ -22,8 +22,10 @@ let semaphoreLocations = {}; // Store locations by semaphore name
 const elements = {
     dashboardViewBtn: document.getElementById('dashboardViewBtn'),
     singleViewBtn: document.getElementById('singleViewBtn'),
+    aboutViewBtn: document.getElementById('aboutViewBtn'),
     dashboardView: document.getElementById('dashboardView'),
     singleView: document.getElementById('singleView'),
+    aboutView: document.getElementById('aboutView'),
     dashboardGrid: document.getElementById('dashboardGrid'),
     semaphoreSelect: document.getElementById('semaphoreSelect'),
     newSemaphoreBtn: document.getElementById('newSemaphoreBtn'),
@@ -506,16 +508,29 @@ function createDashboardCard(semaphoreData) {
 function switchToDashboardView() {
     elements.dashboardView.classList.remove('hidden');
     elements.singleView.classList.add('hidden');
+    elements.aboutView.classList.add('hidden');
     elements.dashboardViewBtn.classList.add('active');
     elements.singleViewBtn.classList.remove('active');
+    elements.aboutViewBtn.classList.remove('active');
     updateDashboard();
 }
 
 function switchToSingleView() {
     elements.dashboardView.classList.add('hidden');
     elements.singleView.classList.remove('hidden');
+    elements.aboutView.classList.add('hidden');
     elements.dashboardViewBtn.classList.remove('active');
     elements.singleViewBtn.classList.add('active');
+    elements.aboutViewBtn.classList.remove('active');
+}
+
+function switchToAboutView() {
+    elements.dashboardView.classList.add('hidden');
+    elements.singleView.classList.add('hidden');
+    elements.aboutView.classList.remove('hidden');
+    elements.dashboardViewBtn.classList.remove('active');
+    elements.singleViewBtn.classList.remove('active');
+    elements.aboutViewBtn.classList.add('active');
 }
 
 // Prediction Logic
@@ -719,6 +734,10 @@ elements.dashboardViewBtn.addEventListener('click', () => {
 
 elements.singleViewBtn.addEventListener('click', () => {
     switchToSingleView();
+});
+
+elements.aboutViewBtn.addEventListener('click', () => {
+    switchToAboutView();
 });
 
 elements.newSemaphoreBtn.addEventListener('click', () => {

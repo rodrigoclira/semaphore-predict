@@ -84,6 +84,104 @@ header h1 {
     color: white;
 }
 
+/* About View */
+#aboutView {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--shadow-lg);
+    margin-bottom: 1rem;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.about-content h2 {
+    text-align: center;
+    color: var(--text-primary);
+    margin-bottom: 2rem;
+    font-size: 1.75rem;
+}
+
+.about-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.about-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.about-section h3 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+}
+
+.about-section p {
+    color: var(--text-primary);
+    line-height: 1.6;
+    margin-bottom: 0.75rem;
+}
+
+.about-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.about-link:hover {
+    text-decoration: underline;
+    color: #2563eb;
+}
+
+.about-quote {
+    font-style: italic;
+    color: var(--text-secondary);
+    padding-left: 1rem;
+    border-left: 3px solid var(--primary-color);
+    margin-top: 1rem;
+}
+
+.tech-stack {
+    list-style: none;
+    padding: 0;
+}
+
+.tech-stack li {
+    padding: 0.5rem 0;
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.tech-stack li strong {
+    color: var(--primary-color);
+    display: inline-block;
+    min-width: 120px;
+}
+
+.how-it-works {
+    padding-left: 1.5rem;
+    color: var(--text-primary);
+}
+
+.how-it-works li {
+    margin-bottom: 0.75rem;
+    line-height: 1.6;
+}
+
+.about-footer {
+    text-align: center;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--border-color);
+}
+
 /* Dashboard View */
 #dashboardView {
     background: var(--card-bg);
@@ -664,6 +762,28 @@ footer {
 
     .btn-state .icon {
         font-size: 2rem;
+    }
+
+    .btn-toggle {
+        font-size: 0.85rem;
+        padding: 0.6rem 0.5rem;
+    }
+
+    #aboutView {
+        padding: 1.5rem;
+    }
+
+    .about-content h2 {
+        font-size: 1.5rem;
+    }
+
+    .about-section h3 {
+        font-size: 1.1rem;
+    }
+
+    .tech-stack li strong {
+        display: block;
+        margin-bottom: 0.25rem;
     }
 }
 
