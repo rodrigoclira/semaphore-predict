@@ -39,6 +39,7 @@ const elements = {
     historySection: document.getElementById('historySection'),
     historyList: document.getElementById('historyList'),
     toggleHistoryBtn: document.getElementById('toggleHistoryBtn'),
+    resetHistoryBtn: document.getElementById('resetHistoryBtn'),
     loadingOverlay: document.getElementById('loadingOverlay'),
     toast: document.getElementById('toast')
 };
@@ -259,6 +260,32 @@ async function recordState(semaphoreName, state) {
         console.error('Error recording state:', error);
         // Error already shown in toast above
         return null;
+    } finally {
+        hideLoading();
+    }
+}
+
+async function deleteHistory(semaphoreName) {
+    try {
+        showLoading();
+        const { error } = await supabase
+            .from('semaphores')
+            .delete()
+            .eq('name', semaphoreName);
+
+        if (error) {
+            console.error('Database delete error:', error);
+            showToast(`Error deleting history: ${error.message}`, 'error');
+            throw error;
+        }
+
+        showToast('History reset successfully', 'success');
+        semaphoreHistory = [];
+        updateUI();
+        return true;
+    } catch (error) {
+        console.error('Error deleting history:', error);
+        return false;
     } finally {
         hideLoading();
     }
@@ -523,6 +550,20 @@ elements.toggleHistoryBtn.addEventListener('click', () => {
     elements.toggleHistoryBtn.textContent = elements.historyList.classList.contains('collapsed')
         ? 'Show All'
         : 'Show Less';
+});
+
+elements.resetHistoryBtn.addEventListener('click', async () => {
+    if (!currentSemaphore) return;
+
+    const confirmed = confirm(
+        `Are you sure you want to reset ALL history for "${currentSemaphore}"?\n\n` +
+        `This will delete all ${semaphoreHistory.length} records and cannot be undone.\n\n` +
+        `Use this when the semaphore timing has changed and you want to start fresh.`
+    );
+
+    if (confirmed) {
+        await deleteHistory(currentSemaphore);
+    }
 });
 
 // Auto-refresh prediction every 10 seconds

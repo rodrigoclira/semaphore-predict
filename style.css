@@ -312,6 +312,21 @@ button {
     font-size: 1.25rem;
 }
 
+.history-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.btn-danger {
+    color: var(--danger-color);
+}
+
+.btn-danger:hover {
+    color: #dc2626;
+    background: rgba(239, 68, 68, 0.1);
+}
+
 .history-list {
     max-height: 400px;
     overflow-y: auto;
