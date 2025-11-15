@@ -461,6 +461,48 @@ async function deleteHistory(semaphoreName) {
     }
 }
 
+async function deleteRecord(recordId, state, timestamp) {
+    if (!isAdmin()) {
+        showToast('❌ Login required to delete records', 'error');
+        return false;
+    }
+
+    const confirmed = confirm(
+        `Delete this record?\n\n` +
+        `${state.toUpperCase()} - ${formatDateTime(timestamp)}\n\n` +
+        `This cannot be undone.`
+    );
+
+    if (!confirmed) return false;
+
+    try {
+        showLoading();
+        const { error } = await supabase
+            .from('semaphores')
+            .delete()
+            .eq('id', recordId);
+
+        if (error) {
+            console.error('Database delete error:', error);
+            showToast(`Error deleting record: ${error.message}`, 'error');
+            throw error;
+        }
+
+        showToast('Record deleted', 'success');
+
+        // Reload history and update UI
+        await loadSemaphoreHistory(currentSemaphore);
+        updateUI();
+
+        return true;
+    } catch (error) {
+        console.error('Error deleting record:', error);
+        return false;
+    } finally {
+        hideLoading();
+    }
+}
+
 async function renameSemaphore(oldName, newName) {
     if (!isAdmin()) {
         showToast('❌ Login required to rename semaphores', 'error');
@@ -637,9 +679,15 @@ function calculateStatsForHistory(history) {
         };
     }
 
+    // Prioritize recent cycles: use last 30 records for better sync with current timing
+    const RECENT_WINDOW = 30;
+    const recentHistory = history.length > RECENT_WINDOW
+        ? history.slice(0, RECENT_WINDOW)
+        : history;
+
     let openDurations = [];
     let closedDurations = [];
-    const sortedHistory = [...history].reverse();
+    const sortedHistory = [...recentHistory].reverse();
 
     for (let i = 0; i < sortedHistory.length - 1; i++) {
         const current = sortedHistory[i];
@@ -1086,8 +1134,19 @@ function updateHistoryList() {
         timeDiv.className = 'history-time';
         timeDiv.textContent = formatDateTime(record.timestamp);
 
+        // Add delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-delete-record';
+        deleteBtn.innerHTML = '🗑️';
+        deleteBtn.title = 'Delete this record';
+        deleteBtn.onclick = async (e) => {
+            e.stopPropagation();
+            await deleteRecord(record.id, record.current_state, record.timestamp);
+        };
+
         item.appendChild(stateDiv);
         item.appendChild(timeDiv);
+        item.appendChild(deleteBtn);
         elements.historyList.appendChild(item);
     });
 }
