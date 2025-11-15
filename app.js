@@ -537,8 +537,7 @@ async function loadAllSemaphoresData() {
                 .from('semaphores')
                 .select('*')
                 .eq('name', semaphoreName)
-                .order('timestamp', { ascending: false })
-                .limit(50); // Get recent records for calculation
+                .order('timestamp', { ascending: false });
 
             if (!error && data) {
                 const history = data.map(item => ({
@@ -546,8 +545,9 @@ async function loadAllSemaphoresData() {
                     timestamp: new Date(item.timestamp)
                 }));
 
-                const prediction = predictStateForHistory(history);
-                const stats = calculateStatsForHistory(history);
+                // Calculate stats using session averaging (same as single view)
+                const stats = calculateStatsWithSessionAveraging(history);
+                const prediction = predictStateForHistory(history, stats);
 
                 allData.push({
                     name: semaphoreName,
@@ -566,6 +566,66 @@ async function loadAllSemaphoresData() {
     } finally {
         hideLoading();
     }
+}
+
+// Calculate stats with session averaging for more accurate predictions
+function calculateStatsWithSessionAveraging(history) {
+    if (history.length < 2) {
+        return {
+            avgOpenDuration: null,
+            avgClosedDuration: null,
+            totalCycles: 0
+        };
+    }
+
+    // Group history by session
+    const sessionGroups = {};
+    history.forEach(record => {
+        const sessionId = record.session_id || 'default';
+        if (!sessionGroups[sessionId]) {
+            sessionGroups[sessionId] = [];
+        }
+        sessionGroups[sessionId].push(record);
+    });
+
+    // Calculate stats for each session
+    const sessionStats = [];
+    Object.keys(sessionGroups).forEach(sessionId => {
+        const stats = calculateStatsForHistory(sessionGroups[sessionId]);
+        if (stats.avgOpenDuration !== null || stats.avgClosedDuration !== null) {
+            sessionStats.push(stats);
+        }
+    });
+
+    // If no valid session stats, return empty
+    if (sessionStats.length === 0) {
+        return {
+            avgOpenDuration: null,
+            avgClosedDuration: null,
+            totalCycles: 0
+        };
+    }
+
+    // Average the averages across sessions
+    const validOpenStats = sessionStats.filter(s => s.avgOpenDuration !== null);
+    const validClosedStats = sessionStats.filter(s => s.avgClosedDuration !== null);
+
+    const avgOpen = validOpenStats.length > 0
+        ? validOpenStats.reduce((sum, s) => sum + s.avgOpenDuration, 0) / validOpenStats.length
+        : null;
+
+    const avgClosed = validClosedStats.length > 0
+        ? validClosedStats.reduce((sum, s) => sum + s.avgClosedDuration, 0) / validClosedStats.length
+        : null;
+
+    const totalCycles = sessionStats.reduce((sum, s) => sum + s.totalCycles, 0);
+
+    return {
+        avgOpenDuration: avgOpen,
+        avgClosedDuration: avgClosed,
+        totalCycles,
+        sessionsCount: sessionStats.length
+    };
 }
 
 function calculateStatsForHistory(history) {
@@ -608,13 +668,14 @@ function calculateStatsForHistory(history) {
     };
 }
 
-function predictStateForHistory(history) {
+function predictStateForHistory(history, providedStats = null) {
     if (history.length === 0) {
         return { state: 'unknown', timeUntilChange: null, confidence: 'No data' };
     }
 
     const lastRecord = history[0];
-    const stats = calculateStatsForHistory(history);
+    // Use provided stats (with session averaging) or calculate basic stats
+    const stats = providedStats || calculateStatsForHistory(history);
     const now = new Date();
     const timeSinceLastRecord = now - lastRecord.timestamp;
 
@@ -650,10 +711,15 @@ function predictStateForHistory(history) {
 
     const timeUntilChange = currentDuration ? currentDuration - timeRemaining : null;
 
+    // Show session count in confidence if available
+    const confidenceText = stats.sessionsCount
+        ? `${stats.totalCycles} cycles (${stats.sessionsCount} sessions avg)`
+        : `${stats.totalCycles} cycles`;
+
     return {
         state: currentState,
         timeUntilChange,
-        confidence: `${stats.totalCycles} cycles`,
+        confidence: confidenceText,
         timeSince: timeSinceLastRecord
     };
 }
@@ -930,9 +996,16 @@ function predictCurrentState() {
         ? (timeRemaining / currentDuration) * 100
         : 0;
 
+    // Build confidence message with session info if available
+    let confidenceMsg = `${stats.totalCycles} cycles tracked`;
+    if (stats.sessionsCount && stats.sessionsCount > 1) {
+        confidenceMsg += ` (${stats.sessionsCount} sessions avg)`;
+    }
+    confidenceMsg += `, ${Math.round(percentComplete)}% into ${currentState} phase`;
+
     return {
         state: currentState,
-        confidence: `${stats.totalCycles} cycles tracked, ${Math.round(percentComplete)}% into ${currentState} phase`,
+        confidence: confidenceMsg,
         lastUpdate: lastRecord.timestamp,
         timeSince: timeSinceLastRecord,
         cycleCount
@@ -979,7 +1052,13 @@ function updateUI() {
     elements.avgClosedDuration.textContent = stats.avgClosedDuration
         ? formatDuration(stats.avgClosedDuration)
         : '--';
-    elements.totalCycles.textContent = stats.totalCycles;
+
+    // Show total cycles with session count if multiple sessions
+    let cyclesText = stats.totalCycles.toString();
+    if (stats.sessionsCount && stats.sessionsCount > 1) {
+        cyclesText += ` (${stats.sessionsCount} sessions)`;
+    }
+    elements.totalCycles.textContent = cyclesText;
 
     // Update history
     updateHistoryList();
